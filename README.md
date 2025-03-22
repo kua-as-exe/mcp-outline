@@ -10,12 +10,9 @@ This project implements a Model Context Protocol (MCP) server that allows AI ass
 
 Currently implemented:
 - **Document Outline Retrieval**: Get document outlines
-
-Planned features:
 - **Document Creation**: Create new documents with outlines
 - **Outline Manipulation**: Add, move, and remove sections
 - **Content Management**: Add and update content within outline sections
-- **Document Export**: Export documents in various formats (Markdown, HTML, etc.)
 
 ## Getting Started
 
