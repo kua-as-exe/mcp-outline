@@ -1,6 +1,6 @@
 # MCP Outline Server
 
-A Model Context Protocol (MCP) server enabling AI assistants to interact with document outlines.
+A Model Context Protocol (MCP) server enabling AI assistants to interact Outline (https://www.getoutline.com)
 
 ## Overview
 
