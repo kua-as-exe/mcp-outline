@@ -4,7 +4,9 @@ Common utilities for document outline features.
 This module provides shared functionality used by both tools and resources.
 """
 import os
+
 from mcp_outline.utils.outline_client import OutlineClient, OutlineError
+
 
 class OutlineClientError(Exception):
     """Exception raised for errors in document outline client operations."""
@@ -29,8 +31,7 @@ def get_outline_client() -> OutlineClient:
         client = OutlineClient(api_key=api_key, api_url=api_url)
         
         # Test the connection by attempting to get auth info
-        auth_info = client.auth_info()
-        user_name = auth_info.get('user', {}).get('name', 'Unknown')
+        _ = client.auth_info()
         
         return client
     except OutlineError as e:

@@ -1,37 +1,15 @@
 """
-Document outline tools for the MCP Outline server.
+Document search tools for the MCP Outline server.
 
-This module provides MCP tools for working with document outlines.
+This module provides MCP tools for searching and listing documents.
 """
-from typing import Optional, Dict, Any, List
-from mcp_outline.features.documents.common import get_outline_client, OutlineClientError
+from typing import Any, Dict, List, Optional
 
+from mcp_outline.features.documents.common import (
+    OutlineClientError,
+    get_outline_client,
+)
 
-def _format_document_outline(document_id: str) -> str:
-    """
-    Format a document outline for display.
-    
-    Args:
-        document_id: The document ID
-        
-    Returns:
-        String with formatted document outline
-    """
-    try:
-        client = get_outline_client()
-        document = client.get_document(document_id)
-        
-        # Simple placeholder formatting - to be expanded
-        title = document.get("title", "Untitled Document")
-        text = document.get("text", "")
-        return f"""# Document Outline: {title}
-
-{text}
-"""
-    except OutlineClientError as e:
-        return f"Error retrieving document outline: {str(e)}"
-    except Exception as e:
-        return f"Unexpected error: {str(e)}"
 
 def _format_search_results(results: List[Dict[str, Any]]) -> str:
     """Format search results into readable text."""
@@ -50,6 +28,26 @@ def _format_search_results(results: List[Dict[str, Any]]) -> str:
         output += f"ID: {doc_id}\n"
         if context:
             output += f"Context: {context}\n"
+        output += "\n"
+    
+    return output
+
+def _format_documents_list(documents: List[Dict[str, Any]], title: str) -> str:
+    """Format a list of documents into readable text."""
+    if not documents:
+        return f"No {title.lower()} found."
+    
+    output = f"# {title}\n\n"
+    
+    for i, document in enumerate(documents, 1):
+        doc_title = document.get("title", "Untitled")
+        doc_id = document.get("id", "")
+        updated_at = document.get("updatedAt", "")
+        
+        output += f"## {i}. {doc_title}\n"
+        output += f"ID: {doc_id}\n"
+        if updated_at:
+            output += f"Last Updated: {updated_at}\n"
         output += "\n"
     
     return output
@@ -103,7 +101,7 @@ def _format_collection_documents(doc_nodes: List[Dict[str, Any]]) -> str:
 
 def register_tools(mcp) -> None:
     """
-    Register document outline tools with the MCP server.
+    Register document search tools with the MCP server.
     
     Args:
         mcp: The FastMCP server instance
@@ -166,5 +164,49 @@ def register_tools(mcp) -> None:
             return _format_collection_documents(docs)
         except OutlineClientError as e:
             return f"Error getting collection structure: {str(e)}"
+        except Exception as e:
+            return f"Unexpected error: {str(e)}"
+            
+    @mcp.tool()
+    def get_document_id_from_title(
+        query: str, collection_id: Optional[str] = None
+    ) -> str:
+        """
+        Find a document ID by searching for its title.
+        
+        Args:
+            query: Title to search for
+            collection_id: Optional collection to search within
+            
+        Returns:
+            Document ID if found, or search results
+        """
+        try:
+            client = get_outline_client()
+            results = client.search_documents(query, collection_id)
+            
+            if not results:
+                return f"No documents found matching '{query}'"
+            
+            # Check if we have an exact title match
+            exact_matches = [
+                r for r in results 
+                if (r.get("document", {}).get("title", "").lower() 
+                    == query.lower())
+            ]
+            
+            if exact_matches:
+                doc = exact_matches[0].get("document", {})
+                doc_id = doc.get("id", "unknown")
+                title = doc.get("title", "Untitled")
+                return f"Document ID: {doc_id} (Title: {title})"
+            
+            # Otherwise return the top match
+            doc = results[0].get("document", {})
+            doc_id = doc.get("id", "unknown")
+            title = doc.get("title", "Untitled")
+            return f"Best match - Document ID: {doc_id} (Title: {title})"
+        except OutlineClientError as e:
+            return f"Error searching for document: {str(e)}"
         except Exception as e:
             return f"Unexpected error: {str(e)}"
