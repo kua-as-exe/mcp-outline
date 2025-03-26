@@ -12,22 +12,42 @@ from mcp_outline.features.documents.common import (
 )
 
 
-def _format_comments(comments: List[Dict[str, Any]]) -> str:
+def _format_comments(
+    comments: List[Dict[str, Any]],
+    total_count: int = 0,
+    limit: int = 25,
+    offset: int = 0
+) -> str:
     """Format document comments into readable text."""
     if not comments:
         return "No comments found for this document."
     
     output = "# Document Comments\n\n"
     
-    for i, comment in enumerate(comments, 1):
+    # Add pagination info if provided
+    if total_count:
+        shown_range = f"{offset+1}-{min(offset+len(comments), total_count)}"
+        output += f"Showing comments {shown_range} of {total_count} total\n\n"
+        
+        # Add warning if there might be more comments than shown
+        if len(comments) == limit:
+            output += "Note: Only showing the first batch of comments. "
+            output += f"Use offset={offset+limit} to see more comments.\n\n"
+    
+    for i, comment in enumerate(comments, offset+1):
         user = comment.get("createdBy", {}).get("name", "Unknown User")
         created_at = comment.get("createdAt", "")
         text = comment.get("text", "")
+        comment_id = comment.get("id", "")
+        anchor_text = comment.get("anchorText", "")
         
         output += f"## {i}. Comment by {user}\n"
+        output += f"ID: {comment_id}\n"
         if created_at:
-            output += f"Date: {created_at}\n\n"
-        output += f"{text}\n\n"
+            output += f"Date: {created_at}\n"
+        if anchor_text:
+            output += f"\nReferencing text: \"{anchor_text}\"\n"
+        output += f"\n{text}\n\n"
     
     return output
 
@@ -39,42 +59,83 @@ def register_tools(mcp) -> None:
         mcp: The FastMCP server instance
     """
     @mcp.tool()
-    def list_document_comments(document_id: str) -> str:
+    def list_document_comments(
+        document_id: str,
+        include_anchor_text: bool = False,
+        limit: int = 25,
+        offset: int = 0
+    ) -> str:
         """
-        Get all comments for a document.
+        Retrieves comments on a specific document with pagination support.
+        
+        IMPORTANT: By default, this returns up to 25 comments at a time. If 
+        there are more than 25 comments on the document, you'll need to make 
+        multiple calls with different offset values to get all comments. The 
+        response will indicate if there 
+        are more comments available.
+        
+        Use this tool when you need to:
+        - Review feedback and discussions on a document
+        - See all comments from different users
+        - Find specific comments or questions
+        - Track collaboration and input on documents
         
         Args:
-            document_id: The document ID
+            document_id: The document ID to get comments from
+            include_anchor_text: Whether to include the document text that 
+                comments refer to
+            limit: Maximum number of comments to return (default: 25)
+            offset: Number of comments to skip for pagination (default: 0)
             
         Returns:
-            Formatted string containing comments
+            Formatted string containing comments with author, date, and 
+            optional anchor text
         """
         try:
             client = get_outline_client()
-            response = client.post(
-                "comments.list", {"documentId": document_id}
-            )
+            data = {
+                "documentId": document_id,
+                "includeAnchorText": include_anchor_text,
+                "limit": limit,
+                "offset": offset
+            }
+            
+            response = client.post("comments.list", data)
             comments = response.get("data", [])
-            return _format_comments(comments)
+            pagination = response.get("pagination", {})
+            
+            total_count = pagination.get("total", len(comments))
+            return _format_comments(comments, total_count, limit, offset)
         except OutlineClientError as e:
             return f"Error listing comments: {str(e)}"
         except Exception as e:
             return f"Unexpected error: {str(e)}"
     
     @mcp.tool()
-    def get_comment(comment_id: str) -> str:
+    def get_comment(comment_id: str, include_anchor_text: bool = False) -> str:
         """
-        Get a specific comment by ID.
+        Retrieves a specific comment by its ID.
+        
+        Use this tool when you need to:
+        - View details of a specific comment
+        - Reference or quote a particular comment
+        - Check comment content and metadata
+        - Find a comment mentioned elsewhere
         
         Args:
-            comment_id: The comment ID
+            comment_id: The comment ID to retrieve
+            include_anchor_text: Whether to include the document text that 
+                the comment refers to
             
         Returns:
-            Formatted string containing the comment details
+            Formatted string with the comment content and metadata
         """
         try:
             client = get_outline_client()
-            response = client.post("comments.info", {"id": comment_id})
+            response = client.post("comments.info", {
+                "id": comment_id,
+                "includeAnchorText": include_anchor_text
+            })
             comment = response.get("data", {})
             
             if not comment:
@@ -83,11 +144,14 @@ def register_tools(mcp) -> None:
             user = comment.get("createdBy", {}).get("name", "Unknown User")
             created_at = comment.get("createdAt", "")
             text = comment.get("text", "")
+            anchor_text = comment.get("anchorText", "")
             
             output = f"# Comment by {user}\n"
             if created_at:
-                output += f"Date: {created_at}\n\n"
-            output += f"{text}\n"
+                output += f"Date: {created_at}\n"
+            if anchor_text:
+                output += f"\nReferencing text: \"{anchor_text}\"\n"
+            output += f"\n{text}\n"
             
             return output
         except OutlineClientError as e:
@@ -98,13 +162,20 @@ def register_tools(mcp) -> None:
     @mcp.tool()
     def get_document_backlinks(document_id: str) -> str:
         """
-        Get a list of documents that link to this document.
+        Finds all documents that link to a specific document.
+        
+        Use this tool when you need to:
+        - Discover references to a document across the workspace
+        - Identify dependencies between documents
+        - Find documents related to a specific document
+        - Understand document relationships and connections
         
         Args:
-            document_id: The document ID
+            document_id: The document ID to find backlinks for
             
         Returns:
-            Formatted string containing backlink information
+            Formatted string listing all documents that link to the specified 
+document
         """
         try:
             client = get_outline_client()

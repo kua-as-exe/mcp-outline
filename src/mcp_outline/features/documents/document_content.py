@@ -27,14 +27,21 @@ def register_tools(mcp) -> None:
         publish: bool = True
     ) -> str:
         """
-        Create a new document.
+        Creates a new document in a specified collection.
+        
+        Use this tool when you need to:
+        - Add new content to a knowledge base
+        - Create documentation, guides, or notes
+        - Add a child document to an existing parent
+        - Start a new document thread or topic
         
         Args:
             title: The document title
             collection_id: The collection ID to create the document in
             text: Optional markdown content for the document
             parent_document_id: Optional parent document ID for nesting
-            publish: Whether to publish the document immediately
+            publish: Whether to publish the document immediately (True) or 
+                save as draft (False)
             
         Returns:
             Result message with the new document ID
@@ -75,16 +82,30 @@ def register_tools(mcp) -> None:
         append: bool = False
     ) -> str:
         """
-        Update an existing document.
+        Modifies an existing document's title or content.
+        
+        IMPORTANT: This tool replaces the document content rather than just 
+adding to it.
+        To update a document with changed data, you need to first read the 
+document,
+        add your changes to the content, and then send the complete document 
+with your changes.
+        
+        Use this tool when you need to:
+        - Edit or update document content
+        - Change a document's title
+        - Append new content to an existing document
+        - Fix errors or add information to documents
         
         Args:
             document_id: The document ID to update
             title: New title (if None, keeps existing title)
             text: New content (if None, keeps existing content)
-            append: If True, appends text instead of replacing
+            append: If True, adds text to the end of document instead of 
+    replacing
             
         Returns:
-            Result message
+            Result message confirming update
         """
         try:
             client = get_outline_client()
@@ -116,14 +137,22 @@ def register_tools(mcp) -> None:
     @mcp.tool()
     def add_comment(
         document_id: str,
-        text: str
+        text: str,
+        parent_comment_id: Optional[str] = None
     ) -> str:
         """
-        Add a comment to a document.
+        Adds a comment to a document or replies to an existing comment.
+        
+        Use this tool when you need to:
+        - Provide feedback on document content
+        - Ask questions about specific information
+        - Reply to another user's comment
+        - Collaborate with others on document development
         
         Args:
             document_id: The document to comment on
             text: The comment text (supports markdown)
+            parent_comment_id: Optional ID of a parent comment (for replies)
             
         Returns:
             Result message with the new comment ID
@@ -136,6 +165,9 @@ def register_tools(mcp) -> None:
                 "text": text
             }
             
+            if parent_comment_id:
+                data["parentCommentId"] = parent_comment_id
+            
             response = client.post("comments.create", data)
             comment = response.get("data", {})
             
@@ -144,7 +176,10 @@ def register_tools(mcp) -> None:
                 
             comment_id = comment.get("id", "unknown")
             
-            return f"Comment added successfully (ID: {comment_id})"
+            if parent_comment_id:
+                return f"Reply added successfully (ID: {comment_id})"
+            else:
+                return f"Comment added successfully (ID: {comment_id})"
         except OutlineClientError as e:
             return f"Error adding comment: {str(e)}"
         except Exception as e:
