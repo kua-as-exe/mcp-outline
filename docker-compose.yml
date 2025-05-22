@@ -3,8 +3,6 @@ version: '3'
 services:
   mcp-outline:
     build: .
-    volumes:
-      - ./src:/app/src
     environment:
       - OUTLINE_API_KEY: $OUTLINE_API_KEY
       - OUTLINE_API_URL: $OUTLINE_API_URL
