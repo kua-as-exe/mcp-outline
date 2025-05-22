@@ -15,7 +15,7 @@ register_all(mcp)
 
 def main():
     # Start the server
-    mcp.run()
+    mcp.run(transport='sse')
 
 if __name__ == "__main__":
     main()

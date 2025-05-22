@@ -106,6 +106,22 @@ Move document "docId123" to collection "colId789"
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Docker
+
+### Running with Docker
+
+```bash
+# Build and start the container
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+### Configuration with Docker
+
+Create a `.env` file as described in the Configuration section above before starting the container.
+
 ## Development
 
 ```bash
