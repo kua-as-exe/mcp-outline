@@ -5,6 +5,7 @@ services:
     build: .
     volumes:
       - ./src:/app/src
-    env_file:
-      - .env
+    environment:
+      - OUTLINE_API_KEY
+      - OUTLINE_API_URL
     restart: unless-stopped 
